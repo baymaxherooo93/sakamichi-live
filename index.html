@@ -502,8 +502,9 @@ const RW={news:15,blog:12};   /* jumlah baris per request (nogi API mendukung pa
 /* Daftar sumber. url(n) : n=0 → halaman/bulan pertama, n>0 → "muat lebih banyak" */
 function monthBack(n){const d=new Date(Date.now());d.setDate(1);d.setMonth(d.getMonth()-n);return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0');}
 const SOURCES=[
- {id:'nogi-news',group:'nogi',type:'news',label:'乃木坂46 NEWS',kind:'json',
-  url:n=>'https://www.nogizaka46.com/s/n46/api/list/news_v2?page='+(n+1)+'&rw='+RW.news,parse:'nogiNews',deep:4},
+ {id:'nogi-news',group:'nogi',type:'news',label:'乃木坂46 NEWS',kind:'jsonp',
+  url:n=>n===0?('https://www.nogizaka46.com/s/n46/api/list/news?page=1&rw='+RW.news)
+              :('https://www.nogizaka46.com/s/n46/api/list/news?dy='+monthBack(n)),parse:'nogiNews',deep:3},
  {id:'saku-news',group:'saku',type:'news',label:'櫻坂46 NEWS',kind:'html',
   url:n=>'https://www.sakurazaka46.com/s/s46/news/list'+(n?'?dy='+monthBack(n):''),parse:'sakuNews',deep:3,mdLink:/\/s\/s46\/news\/detail\//},
  {id:'hina-news',group:'hina',type:'news',label:'日向坂46 NEWS',kind:'html',
@@ -526,7 +527,7 @@ const PROXIES=[
  {id:'corslol',   build:u=>'https://api.cors.lol/?url='+enc(u), prio:4},
  {id:'codetabs',  build:u=>'https://api.codetabs.com/v1/proxy?quest='+enc(u), prio:4},
  {id:'corsfix',   build:u=>'https://proxy.corsfix.com/'+u, prio:3, nullOk:false, noQuery:true},
- {id:'jina',      build:u=>'https://r.jina.ai/'+u, prio:3,
+ {id:'jina',      build:u=>'https://r.jina.ai/'+u, prio:3, text:true,
                   headers:k=>({'X-Return-Format':k==='html'?'html':'text','X-No-Cache':'true'})},
  {id:'alloriginsJ',build:u=>'https://api.allorigins.win/get?url='+enc(u), prio:0, wrap:'contents'},
  {id:'corseu',    build:u=>'https://cors.eu.org/'+u, prio:0},
@@ -886,6 +887,15 @@ function fetchJsonp(url,timeout){
     s.src=url;s.async=true;document.head.appendChild(s);
   });
 }
+/* Endpoint nogizaka selalu memanggil callback global `res(...)`, jadi dua request
+   JSONP paralel akan saling menimpa callback. Serialize lewat antrean kecil. */
+let jsonpChain=Promise.resolve();
+function fetchJsonpQueued(url,timeout){
+  const run=()=>fetchJsonp(url,timeout);
+  const p=jsonpChain.then(run,run);
+  jsonpChain=p.then(()=>{},()=>{});
+  return p;
+}
 function stripReader(t){
   t=String(t||'');
   const i=t.indexOf('Markdown Content:');
@@ -898,13 +908,22 @@ function cutJson(t){
   const b=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));
   return (a<b)?t.slice(a,b+1):t;
 }
+function unwrapReaderJson(t){
+  t=String(t||'').trim();
+  if(t[0]!=='{') return null;
+  try{
+    const j=JSON.parse(t);
+    if(j&&j.data&&(typeof j.data.content==='string')) return j.data.content;
+  }catch(e){}
+  return null;
+}
 async function getSource(src,n){
   const url=src.url(n||0);
   const kind=src.kind==='html'?'html':'data';
   let r=null;
   if(src.kind==='jsonp'){
-    /* JSONP: tanpa CORS, paling ringan → dicoba lebih dulu */
-    try{ r=await fetchJsonp(url,12000); }
+    /* JSONP: tanpa CORS, paling ringan → dicoba lebih dulu (serial via queue) */
+    try{ r=await fetchJsonpQueued(url,12000); }
     catch(e){
       logLine('JSONP gagal, ganti proxy → '+src.label,'wn');
       r=await fetchWith(url,{kind:kind,src:src,deep:(n||0)>0});
@@ -914,6 +933,7 @@ async function getSource(src,n){
   }
   let items=null,errTxt='';
   let body=r.textMode?stripReader(r.text):r.text;
+  const uw=unwrapReaderJson(body); if(uw!==null){ body=uw; }
   if(looksJson(body)){
     try{ items=Parsers[src.parse](cutJson(body)); }catch(e){ errTxt=(e&&e.message)||String(e); }
   }
