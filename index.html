@@ -1532,11 +1532,42 @@ function closeModal(){$('#modalSlot').innerHTML='';document.body.style.overflow=
 
 /* ============================ 16. DRAWER PENGATURAN ============================ */
 function swCode(){
-  return "/* sw.js — taruh di folder yang sama dengan file HTML (hanya perlu jika di-hosting online) */\n"+
-"const CACHE='saka-v1', ASSETS=['./','./index.html','./sakamichi-live.html'];\n"+
-"self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS.filter(a=>a))).catch(()=>{}));self.skipWaiting();});\n"+
-"self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim();});\n"+
-"self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match(e.request).then(m=>m||caches.match('./'))));});";
+  return "/* sw.js — cache shell agar SAKAMICHI LIVE bisa dibuka offline saat di-hosting */\n" +
+"const CACHE = 'saka-v2';\n" +
+"const ASSETS = ['./', './index.html', './sw.js'];\n" +
+"\n" +
+"self.addEventListener('install', e => {\n" +
+"  /* tambah per-file: satu 404 tidak boleh membatalkan seluruh cache */\n" +
+"  e.waitUntil(\n" +
+"    caches.open(CACHE).then(c => Promise.all(ASSETS.map(a => c.add(a).catch(() => null))))\n" +
+"  );\n" +
+"  self.skipWaiting();\n" +
+"});\n" +
+"\n" +
+"self.addEventListener('activate', e => {\n" +
+"  e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))));\n" +
+"  self.clients.claim();\n" +
+"});\n" +
+"\n" +
+"self.addEventListener('fetch', e => {\n" +
+"  if (e.request.method !== 'GET') return;\n" +
+"  const url = new URL(e.request.url);\n" +
+"  if (url.origin !== self.location.origin) return;        /* data/proxy pihak ketiga: jangan disentuh */\n" +
+"  if (url.pathname.indexOf('/proxy') >= 0) return;        /* jalur data lokal: selalu jaringan */\n" +
+"  e.respondWith(\n" +
+"    fetch(e.request).then(r => {\n" +
+"      if (r && r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)).catch(() => {}); }\n" +
+"      return r;\n" +
+"    }).catch(async () => {\n" +
+"      const m = await caches.match(e.request);\n" +
+"      if (m) return m;\n" +
+"      for (const k of ['./index.html', './']) { const x = await caches.match(k); if (x) return x; }\n" +
+"      return new Response('<meta charset=\"utf-8\">Offline — cache shell belum tersedia.', {\n" +
+"        status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' }\n" +
+"      });\n" +
+"    })\n" +
+"  );\n" +
+"});\n";
 }
 function workerCode(){
   return "// Cloudflare Worker proxy pribadi (paling stabil) — deploy gratis di dash.cloudflare.com/workers\n"+
