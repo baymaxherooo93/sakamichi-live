@@ -1,0 +1,17 @@
+# Sampah sistem & editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+.vscode/
+.idea/
+
+# Artefak lokal (hasil eksport/salinan)
+*.bak
+*.tmp
+*.log
+deploy/
+*.zip
+__pycache__/
+*.pyc
