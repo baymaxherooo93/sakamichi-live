@@ -1,5 +1,5 @@
 /* sw.js — cache shell agar SAKAMICHI LIVE bisa dibuka offline saat di-hosting */
-const CACHE = 'saka-v4';
+const CACHE = 'saka-v5';
 const ASSETS = ['./', './index.html', './sw.js'];
 
 self.addEventListener('install', e => {

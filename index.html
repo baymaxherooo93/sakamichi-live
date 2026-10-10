@@ -466,15 +466,15 @@ textarea.inp{font-family:var(--mono);font-size:var(--fs-xs);line-height:1.7;resi
       </div>
     </main>
     <aside class="side">
-      <section class="box">
+      <section class="box" data-od-id="box-terbaru">
         <div class="box-h">Ringkasan <span class="sp"></span><span class="pill" id="sumTotal">0 item</span></div>
         <div class="box-b" id="grpStats"></div>
       </section>
-      <section class="box">
+      <section class="box" data-od-id="box-statistik">
         <div class="box-h">Status Sumber <span class="sp"></span><span class="pill" id="proxyName">–</span></div>
         <div class="box-b" id="srcStats"></div>
       </section>
-      <section class="box">
+      <section class="box" data-od-id="box-sumber">
         <div class="box-h">Performa Refresh <span class="sp"></span><span class="pill" id="avgMs">–</span></div>
         <div class="box-b">
           <div class="spark" id="spark"></div>
@@ -485,11 +485,11 @@ textarea.inp{font-family:var(--mono);font-size:var(--fs-xs);line-height:1.7;resi
           <div class="kv"><span>Data siklus terakhir</span><b id="kKB">–</b></div>
         </div>
       </section>
-      <section class="box">
+      <section class="box" data-od-id="box-filter">
         <div class="box-h">Log Aktivitas</div>
         <div class="box-b"><div class="log" id="log"></div></div>
       </section>
-      <section class="box">
+      <section class="box" data-od-id="box-bantuan">
         <div class="box-h">Pintasan</div>
         <div class="box-b hint">
           <b>R</b> refresh · <b>/</b> cari · <b>N</b> aktifkan notifikasi · <b>T</b> tema · <b>S</b> pengaturan · <b>Esc</b> tutup panel · <b>1/2/3</b> filter grup
@@ -1790,7 +1790,8 @@ function openDrawer(sec){
     Store.del('items');Store.del('seen');Store.del('read');Store.del('trans');
     render();updateTicker();toastMsg('Cache dihapus','Tekan R untuk mengambil data terbaru.','ok');
   };
-  if(sec!=null){const el=dov.querySelector('[data-sec="'+sec+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+  if(sec!=null){const el=dov.querySelector('[data-sec="'+sec+'"]');const sp=el&&el.closest('.dr-b');
+  if(sp)sp.scrollTo({top:sp.scrollTop+(el.getBoundingClientRect().top-sp.getBoundingClientRect().top)-8,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
   document.body.style.overflow='hidden';
 }
 function closeDrawer(){$('#drawerSlot').innerHTML='';if(!$('#ov'))document.body.style.overflow='';}
